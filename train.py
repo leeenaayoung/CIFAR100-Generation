@@ -483,11 +483,11 @@ def train_stylegan2(
 
             # R1 regularization
             r1_reg = 0
-            if i % 8 == 0:  # Apply R1 every 16 iterations
-                grad_real = grad(
-                    outputs=d_real.sum(), inputs=real_images,
-                    create_graph=True, retain_graph=True)[0]
-                r1_reg = 10 * grad_real.pow(2).reshape(grad_real.shape[0], -1).sum(1).mean()
+            r1_weight = max(0.1, 10 * (1 - epoch / n_epochs))
+            grad_real = grad(
+                outputs=d_real.sum(), inputs=real_images,
+                create_graph=True, retain_graph=True)[0]
+            r1_reg = r1_weight * grad_real.pow(2).reshape(grad_real.shape[0], -1).sum(1).mean()
            
             # WGAN-GP Loss
             gp = gradient_penalty(discriminator, real_images_aug, fake_images_aug.detach(), device, real_labels)
