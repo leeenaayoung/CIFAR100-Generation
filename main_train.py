@@ -5,6 +5,18 @@ from datetime import datetime
 import wandb
 from stylegan2_model import StyleGAN2Generator, StyleGAN2Discriminator
 from train import train_stylegan2
+import numpy as np
+import random
+
+def set_seed(seed):
+    torch.manual_seed(seed)
+    torch.cuda.manual_seed(seed)
+    torch.cuda.manual_seed_all(seed) # GPU 여러 개 사용할 경우 사용
+    torch.backends.cudnn.deterministic = True
+    torch.backends.cudnn.benchmark = False # 완벽한 재현성을 위해선 False로 하는 게 맞지만 성능의 저하를 일으킬 수 있음
+    np.random.seed(seed)
+    random.seed(seed)
+set_seed(0)
 
 def parse_args():
     parser = argparse.ArgumentParser(description='Train StyleGAN2 on CIFAR-100')

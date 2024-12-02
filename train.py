@@ -7,6 +7,7 @@ from tqdm import tqdm
 import os
 import json
 from datetime import datetime
+import random
 
 import matplotlib.pyplot as plt
 import wandb
@@ -21,6 +22,16 @@ from stylegan2_model import StyleGAN2Generator, StyleGAN2Discriminator
 from data_loader import get_dataloader
 from evaluate import load_inception_net, evaluate_model
 from diff_aug import apply_diffaug
+
+def set_seed(seed):
+    torch.manual_seed(seed)
+    torch.cuda.manual_seed(seed)
+    torch.cuda.manual_seed_all(seed) # GPU 여러 개 사용할 경우 사용
+    torch.backends.cudnn.deterministic = True
+    torch.backends.cudnn.benchmark = False # 완벽한 재현성을 위해선 False로 하는 게 맞지만 성능의 저하를 일으킬 수 있음
+    np.random.seed(seed)
+    random.seed(seed)
+set_seed(0)
 
 # CIFAR-100 클래스명
 CIFAR100_CLASSES = [
