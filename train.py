@@ -412,7 +412,7 @@ def train_stylegan2(
     
     # 옵티마이저 설정
     g_optimizer = optim.RAdam(generator.parameters(), lr=lr, betas=(0.5, 0.999))
-    d_optimizer = optim.RAdam(discriminator.parameters(), lr=lr, betas=(0.5, 0.999))
+    d_optimizer = optim.RAdam(discriminator.parameters(), lr=lr*0.5, betas=(0.5, 0.999))
     
     # 결과 저장 디렉토리 생성
     os.makedirs(checkpoint_dir, exist_ok=True)
@@ -506,7 +506,7 @@ def train_stylegan2(
             d_optimizer.step()
             epoch_d_losses.append(d_loss.item())  # 이 부분 추가
             
-            if i % 5 == 0:
+            if i % 2 == 0:
                 g_optimizer.zero_grad()
                 d_fake, fake_class_pred = discriminator(fake_images_aug, real_labels)
                 g_wasserstein_loss = -torch.mean(d_fake)
