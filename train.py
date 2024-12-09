@@ -480,15 +480,6 @@ def train_stylegan2(
             d_real, real_class_pred = discriminator(real_images_aug, real_labels)
             d_fake, fake_class_pred = discriminator(fake_images_aug.detach(), real_labels)
            
-
-            # R1 regularization
-            r1_reg = 0
-            r1_weight = max(0.1, 10 * (1 - epoch / n_epochs))
-            grad_real = grad(
-                outputs=d_real.sum(), inputs=real_images,
-                create_graph=True, retain_graph=True)[0]
-            r1_reg = r1_weight * grad_real.pow(2).reshape(grad_real.shape[0], -1).sum(1).mean()
-           
             # WGAN-GP Loss
             gp = gradient_penalty(discriminator, real_images_aug, fake_images_aug.detach(), device, real_labels)
             wasserstein_loss = -(torch.mean(d_real) - torch.mean(d_fake))
@@ -498,7 +489,7 @@ def train_stylegan2(
            
             # Training loop 안에서
             # d_loss = wasserstein_loss + 2.0 * gp + classification_loss + r1_reg
-            d_loss = wasserstein_loss + 10.0 * gp + classification_loss + r1_reg
+            d_loss = wasserstein_loss + 10.0 * gp + classification_loss
             d_loss.backward(retain_graph=True)
             
             # Gradient Clipping 적용
@@ -506,7 +497,7 @@ def train_stylegan2(
             d_optimizer.step()
             epoch_d_losses.append(d_loss.item())  # 이 부분 추가
             
-            if i % 2 == 0:
+            if i % 5 == 0:
                 g_optimizer.zero_grad()
                 d_fake, fake_class_pred = discriminator(fake_images_aug, real_labels)
                 g_wasserstein_loss = -torch.mean(d_fake)
