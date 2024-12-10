@@ -69,6 +69,7 @@ You can see the metric at the midpoint every 100 epochs and at the end of the 10
 
 ## Model Structure
 ![제목 없는 프레젠테이션](https://github.com/user-attachments/assets/4e561b07-e6e8-410f-8479-83d17b2edfeb)
+
 The model we implemented for this project is StyleGAN2, an enhanced version of StyleGAN, which consists of three key components: mapping network, synthesis network, and style injection mechanism. The diagram above illustrates the architecture of our implemented model.
 The mapping network, located on the left, transforms a latent vector z into an intermediate latent vector w. This network comprises an L2 normalization layer and 8 fully connected layers, each activated with Leaky ReLU. We incorporated label embedding to enable the model to reflect class information effectively.
 The synthesis network, positioned in the center, serves as the core network for image generation. Starting with a 4x4 resolution, it progressively increases the image size through generator blocks, each incorporating upsampling, convolution, noise addition, and style injection processes. We implemented Conv2dModulation and ToRGB layers to effectively capture fine details and gradually generate color information, even with CIFAR100's small image dimensions.
