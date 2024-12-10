@@ -12,6 +12,10 @@ If your virtual environment meets upper conditions, you can use
 ```bash
 pip install -r requirements.txt
 ```
+OR
+```bash
+pip install matplotlib numpy scikit-learn scipy stylegan2_pytorch tqdm wandb
+```
 But you should be careful your CUDA Version is same with ours.
 
 ### Table of Usage
@@ -19,12 +23,12 @@ But you should be careful your CUDA Version is same with ours.
 - [Run wandb(optional)](#Run-wandb-optional)
 - [Model Structure](#Model-structure)
 - [Results](#Results)
-- [Utility](#Utiltiy)
+- [Utility](#Utilities)
 - [Others](#Others)
 
 ### Data Preprocessing ang Augmentation
 ### Run wandb(optional)
 ### Model Structure
 ### Results
-### Utilitys
+### Utilities
 ### Others
