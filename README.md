@@ -26,7 +26,10 @@ But you should be careful your CUDA Version is same with ours.
 
 ## Table of Usage
 - [Data Preprocessing and Augmentation](#Data-preprocessing-and-augmenataion)
+- [Regularization](#Regularization)
+- [Training](#Training)
 - [Run wandb(optional)](#Run-wandb-optional)
+- [How to check best metrics](#How-to-check-best-metrics)
 - [Model Structure](#Model-structure)
 - [Results](#Results)
 
