@@ -30,11 +30,21 @@ But you should be careful your CUDA Version is same with ours.
 - [Model Structure](#Model-structure)
 - [Results](#Results)
 
-## Data Preprocessing ang Augmentation
+## Data Preprocessing and Augmentation
 * Resize(32)
 * ToTensor()
 * RandomHorizontalFlip()
 * Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
+* DiffAug(color,translation)
+
+## Training
+```bash
+python main_train.py
+```
+OR
+```bash
+python3 main_train.py
+```
 
 ## Run wandb(optional)
 Install wandb
@@ -43,7 +53,7 @@ pip install wandb
 ```
 ```python
 import wandb
-wandb.init(project="CIFAR-100_Classification", entity=args.wandb_entity, name=run_name, config=vars(args)
+wandb.init(project="CIFAR-100_Generation", entity=args.wandb_entity, name=run_name, config=vars(args)
 ```
 If you want to use wandb, remove wandb annotation
 
@@ -64,7 +74,7 @@ This architecture was specifically designed to handle the unique characteristics
 | IS | 6.51±0.11 |
 | FID | 20.88 |
 | Intra-FID | 56.83 |
-| Runtime | 2d 3h 7m 32s |
+| Runtime | 2d 2h 59m 28s |
 
 
 ## Git Commit Rules
