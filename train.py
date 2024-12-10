@@ -455,7 +455,7 @@ def train_stylegan2(
     num_workers=4,
     n_eval_samples=2500,
     eval_batch_size=32,
-    diffaug_policy="translation,cutout"  # DiffAug 정책 추가
+    diffaug_policy="color,translation"  # DiffAug 정책 추가
 ):
     best_metrics = [0,0,0,100]
     """StyleGAN2 훈련 함수"""
