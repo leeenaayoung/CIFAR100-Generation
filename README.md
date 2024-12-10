@@ -38,7 +38,7 @@ But you should be careful your CUDA Version is same with ours.
 * DiffAug(color,translation)
 
 # Regularization
-* Discriminator: hinge loss + gradient penalty
+* Discriminator: hinge loss + quantize_loss + gradient penalty
 * Generator: hinge loss + Path Length Regularization
 
 ## Training
