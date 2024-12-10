@@ -61,6 +61,9 @@ wandb.init(project="CIFAR-100_Generation", entity=args.wandb_entity, name=run_na
 ```
 If you want to use wandb, remove wandb annotation
 
+## How to check best metrics
+You can see the metric at the midpoint every 100 epochs and at the end of the 1000 epoch training, you can see the best metric. For the best metric, it is evaluated based on the lowest Intra-Fid. If you want to save the model, uncomment save model at the end of train.py.
+
 ## Model Structure
 ![제목 없는 프레젠테이션](https://github.com/user-attachments/assets/4e561b07-e6e8-410f-8479-83d17b2edfeb)
 The model we implemented for this project is StyleGAN2, an enhanced version of StyleGAN, which consists of three key components: mapping network, synthesis network, and style injection mechanism. The diagram above illustrates the architecture of our implemented model.
