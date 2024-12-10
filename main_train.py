@@ -48,7 +48,7 @@ def parse_args():
                       help='Frequency of evaluation (epochs)')
     
     # 하드웨어 설정
-    parser.add_argument('--device', type=str, default='cuda',
+    parser.add_argument('--device', type=str, default='cuda:0',
                       help='Device to use (cuda or cpu)')
     parser.add_argument('--num-workers', type=int, default=4,
                       help='Number of data loading workers')
@@ -56,7 +56,7 @@ def parse_args():
     # 체크포인트 관련 설정
     parser.add_argument('--checkpoint-dir', type=str, default='savepoints',
                       help='Directory to save checkpoints')
-    parser.add_argument('--checkpoint-freq', type=int, default=20,
+    parser.add_argument('--checkpoint-freq', type=int, default=100,
                       help='Frequency of saving checkpoints (epochs)')
     parser.add_argument('--resume', type=str, default=None,
                       help='Path to checkpoint to resume training from')

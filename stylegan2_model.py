@@ -13,16 +13,6 @@ class Flatten(nn.Module):
     def forward(self, x):
         return x.reshape(x.shape[0], -1)
 
-class RandomApply(nn.Module):
-    def __init__(self, prob, fn, fn_else = lambda x: x):
-        super().__init__()
-        self.fn = fn
-        self.fn_else = fn_else
-        self.prob = prob
-    def forward(self, x):
-        fn = self.fn if random() < self.prob else self.fn_else
-        return fn(x)
-
 class Residual(nn.Module):
     def __init__(self, fn):
         super().__init__()
@@ -238,22 +228,16 @@ class GeneratorBlock(nn.Module):
         self.to_rgb = RGBBlock(latent_dim, filters, upsample_rgb, rgba)
 
     def forward(self, x, prev_rgb, istyle, inoise):
-        # print(f"x initial shape: {x.shape}")
-
         if exists(self.upsample):
             x = self.upsample(x)
-            # print(f"x after upsample: {x.shape}")
 
         b, c, h, w = x.shape
 
         inoise = F.interpolate(inoise, size=(h, w), mode='bilinear', align_corners=False)
-        # print(f"inoise after interpolate: {inoise.shape}")
 
         inoise = inoise.expand(b, c, h, w)
-        # print(f"inoise after expand: {inoise.shape}")
 
         inoise_flat = inoise.permute(0, 2, 3, 1).reshape(-1, c)
-        # print(f"inoise_flat shape: {inoise_flat.shape}")
 
         # Verify input and weight dimensions match
         assert self.to_noise1.weight.shape[1] == c, (
@@ -265,20 +249,16 @@ class GeneratorBlock(nn.Module):
 
         noise1 = self.to_noise1(inoise_flat).view(b, self.filters, h, w)
         noise2 = self.to_noise2(inoise_flat).view(b, self.filters, h, w)
-        # print(f"noise1 shape: {noise1.shape}, noise2 shape: {noise2.shape}")
 
         style1 = self.to_style1(istyle)
         x = self.conv1(x, style1)
         x = self.activation(x + noise1)
-        # print(f"x after first conv: {x.shape}")
 
         style2 = self.to_style2(istyle)
         x = self.conv2(x, style2)
         x = self.activation(x + noise2)
-        # print(f"x after second conv: {x.shape}")
 
         rgb = self.to_rgb(x, prev_rgb, istyle)
-        # print(f"rgb shape: {rgb.shape if rgb is not None else 'None'}")
         return x, rgb
 
 
@@ -358,35 +338,24 @@ class StyleGAN2Generator(nn.Module):
             self.blocks.append(block)
 
     def forward(self, styles, labels, input_noise):
-        # print(f"styles:{styles}")
-        # print(f"type of styles: {type(styles)}")
         batch_size = styles.shape[0]
         label_embeds = self.label_embedding(labels)  # 라벨 임베딩
         styles = styles + label_embeds.unsqueeze(1)  # 스타일벡터에 라벨 정보 추가
-    
-        # print(f"styles shape: {styles.shape}")
-        # print(f"label_embeds shape: {label_embeds.shape}")
 
         if self.no_const:
             avg_style = styles.mean(dim=1)[:, :, None, None]
             x = self.to_initial_block(avg_style)
         else:
             x = self.initial_block.expand(batch_size, -1, -1, -1)
-            
-        # print(f"Initial styles shape: {styles.shape}")
-        # print(f"Label embeds shape: {label_embeds.shape}")
-        # print(f"x shape after initial conv: {x.shape}")
-        
+
         rgb = None
         styles = styles.transpose(0, 1)
         x = self.initial_conv(x)
 
         for style, block, attn in zip(styles, self.blocks, self.attns):
-            # print(f"Layer {i} style shape: {style.shape}")
             if exists(attn):
                 x = attn(x)
             x, rgb = block(x, rgb, style, input_noise)
-            # print(f"Layer {i} output x shape: {x.shape}, rgb shape: {rgb.shape if rgb is not None else 'None'}")
         rgb = torch.tanh(rgb)
 
         return rgb

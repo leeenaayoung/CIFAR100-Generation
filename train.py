@@ -3,24 +3,21 @@ import torch.nn as nn
 import torch.optim as optim
 from torch.autograd import grad
 import numpy as np
-from tqdm import tqdm
 import os
 import json
-from datetime import datetime
 import random
+import math
+from torch.autograd import grad as torch_grad
 
 import matplotlib.pyplot as plt
 import wandb
-from torchvision.utils import make_grid
-import torchvision
 import torch.nn.functional as F
-import torchvision.models as models
 from PIL import Image, ImageDraw, ImageFont
 import torchvision.transforms as transforms
 
 from stylegan2_model import StyleGAN2Generator, StyleGAN2Discriminator
 from data_loader import get_dataloader
-from evaluate import load_inception_net, evaluate_model
+from evaluate import evaluate_model
 from diff_aug import apply_diffaug
 
 def set_seed(seed):
@@ -32,6 +29,56 @@ def set_seed(seed):
     np.random.seed(seed)
     random.seed(seed)
 set_seed(0)
+
+def gen_hinge_loss(fake):
+    return fake.mean()
+
+def hinge_loss(fake, real):
+    return (F.relu(1 + real) + F.relu(1 - fake)).mean()
+
+def image_noise(n, im_size, device):
+    return torch.empty(n, 1, im_size, im_size, device=device).uniform_(0., 1.)
+
+def leaky_relu(p=0.2):
+    return nn.LeakyReLU(p, inplace=True)
+
+class EqualLinear(nn.Module):
+    def __init__(self, in_dim, out_dim, lr_mul = 1, bias = True):
+        super().__init__()
+        self.weight = nn.Parameter(torch.randn(out_dim, in_dim))
+        if bias:
+            self.bias = nn.Parameter(torch.zeros(out_dim))
+
+        self.lr_mul = lr_mul
+
+    def forward(self, input):
+        return F.linear(input, self.weight * self.lr_mul, bias=self.bias * self.lr_mul)
+
+class StyleVectorizer(nn.Module):
+    def __init__(self, emb=512, depth=8, lr_mul = 0.1):
+        super().__init__()
+
+        layers = []
+        for i in range(depth):
+            layers.extend([EqualLinear(emb, emb, lr_mul), leaky_relu()])
+
+        self.net = nn.Sequential(*layers)
+
+    def forward(self, x):
+        x = F.normalize(x, dim=1)
+        return self.net(x)
+
+def calc_pl_lengths(styles, images):
+    device = images.device
+    num_pixels = images.shape[2] * images.shape[3]
+    pl_noise = torch.randn(images.shape, device=device) / math.sqrt(num_pixels)
+    outputs = (images * pl_noise).sum()
+
+    pl_grads = torch_grad(outputs=outputs, inputs=styles,
+                          grad_outputs=torch.ones(outputs.shape, device=device),
+                          create_graph=True, retain_graph=True, only_inputs=True)[0]
+
+    return (pl_grads ** 2).sum(dim=1).mean().sqrt()
 
 # CIFAR-100 클래스명
 CIFAR100_CLASSES = [
@@ -234,7 +281,7 @@ def wrap_text(text, max_width, font, draw):
     return wrapped_lines
 
 
-def save_generated_images(generator, epoch, save_dir, superclass_names, intra_fids_list, n_samples=9, device='cuda'):
+def save_generated_images(generator, style_vectorizer,epoch, save_dir, superclass_names, intra_fids_list, n_samples=9, device='cuda'):
     """
     각 슈퍼클래스별로 3x3 이미지를 생성하고, 이를 4x5 그리드로 배치하여 저장
     """
@@ -243,7 +290,15 @@ def save_generated_images(generator, epoch, save_dir, superclass_names, intra_fi
         # 슈퍼클래스별로 n_samples씩 생성
         n_superclasses = len(superclass_names)
         total_samples = n_superclasses * n_samples  # 총 샘플 수 계산
-        z = torch.randn(total_samples, generator.style_dim, device=device)  # 총 샘플 수만큼 잠재 벡터 생성
+        batch_size = total_samples
+        
+        z = torch.randn(batch_size, generator.latent_dim, device=device)
+
+        # Generate fake images
+        w_styles = style_vectorizer(z)
+        # w_styles = truncate_style(w_styles, trunc_psi=0.75)
+        # print(f"styles shape: {styles.shape}")  # (batch_size, total_layers, latent_dim)
+        spatial_noise = image_noise(batch_size, 32, device)  # Spatial noise
         fake_labels = []
 
         for superclass_idx in range(n_superclasses):
@@ -259,7 +314,7 @@ def save_generated_images(generator, epoch, save_dir, superclass_names, intra_fi
                 device=device
             )
         # Generator에 입력
-        fake_images = generator(z, fake_labels).cpu().detach() 
+        fake_images = generator(w_styles, fake_labels, spatial_noise).cpu().detach() 
 
     # 생성된 이미지 값 범위 확인
     print(f"Fake images min: {fake_images.min()}, max: {fake_images.max()}")
@@ -343,10 +398,9 @@ def save_generated_images(generator, epoch, save_dir, superclass_names, intra_fi
 
     print(f"Saved generated images to {save_path}")
     
-def evaluate_epoch(generator, real_dataloader, n_eval_samples=50000, batch_size=32, device='cuda'):
+def evaluate_epoch(generator, style_vectorizer, real_dataloader, n_eval_samples=50000, batch_size=32, device='cuda'):
     """모델 평가 함수"""
     generator.eval()
-    
     def sample_generator():
         # 작은 배치 사이즈로 생성
         labels = []
@@ -361,12 +415,19 @@ def evaluate_epoch(generator, real_dataloader, n_eval_samples=50000, batch_size=
         labels = labels[perm]
         
         # 이미지 생성
-        z = torch.randn(batch_size, generator.style_dim, device=device)
+        z = torch.randn(batch_size, generator.latent_dim, device=device)
+        spatial_noise = torch.randn(batch_size, 1, 32, 32, device=device)
+
+        # Generate fake images
+        w_styles = style_vectorizer(z)
+        # w_styles = truncate_style(w_styles, trunc_psi=0.75)
+        # print(f"styles shape: {styles.shape}")  # (batch_size, total_layers, latent_dim)
+        spatial_noise = image_noise(batch_size, 32, device)  # Spatial noise
         
         # 메모리 절약을 위해 gradient 계산 비활성화
         with torch.cuda.amp.autocast():  # mixed precision 사용
             with torch.no_grad():
-                images = generator(z, labels)
+                images = generator(w_styles, labels, spatial_noise)
                 
         return images, labels
 
@@ -388,7 +449,7 @@ def train_stylegan2(
     n_epochs=100,
     batch_size=64,
     latent_dim=512,
-    device='cuda:1',
+    device='cuda:0',
     checkpoint_dir='savepoints',
     checkpoint_freq=10,
     eval_freq=5,
@@ -398,21 +459,22 @@ def train_stylegan2(
     num_workers=4,
     n_eval_samples=2500,
     eval_batch_size=32,
-    diffaug_policy="color,translation"  # DiffAug 정책 추가
+    diffaug_policy="translation,cutout"  # DiffAug 정책 추가
 ):
     """StyleGAN2 훈련 함수"""
     global intra_fids_list 
     # 모델 초기화
     generator = StyleGAN2Generator(latent_dim).to(device)
     discriminator = StyleGAN2Discriminator().to(device)
+    style_vectorizer = StyleVectorizer().to(device)
     
     # wandb에 모델 구조 기록
     wandb.watch(generator, log="all", log_freq=log_freq)
     wandb.watch(discriminator, log="all", log_freq=log_freq)
     
     # 옵티마이저 설정
-    g_optimizer = optim.RAdam(generator.parameters(), lr=lr, betas=(0.5, 0.999))
-    d_optimizer = optim.RAdam(discriminator.parameters(), lr=lr*0.5, betas=(0.5, 0.999))
+    g_optimizer = optim.Adam(generator.parameters(), lr=0.00025, betas=(0, 0.99))
+    d_optimizer = optim.Adam(discriminator.parameters(), lr=0.00015, betas=(0, 0.99))
     
     # 결과 저장 디렉토리 생성
     os.makedirs(checkpoint_dir, exist_ok=True)
@@ -442,9 +504,11 @@ def train_stylegan2(
     # 데이터로더 설정
     train_dataloader = get_dataloader(batch_size=batch_size, num_workers=num_workers)
     eval_dataloader = get_dataloader(batch_size=batch_size, num_workers=num_workers)
-    
+
+    pl_mean = 0
     # 훈련 루프
     for epoch in range(start_epoch, n_epochs):
+        torch.cuda.empty_cache()
         generator.train()
         discriminator.train()
         
@@ -466,9 +530,13 @@ def train_stylegan2(
                 [intra_fids_list[label.item()] for label in real_labels],
                 device=device
             ).long()
-             
+
             z = torch.randn(batch_size, latent_dim, device=device)
-            fake_images = generator(z, real_labels)  # 실제 레이블 사용
+
+            # Generate fake images
+            w_styles = style_vectorizer(z)
+            spatial_noise = image_noise(batch_size, 32, device)  # Spatial noise
+            fake_images = generator(w_styles, real_labels, spatial_noise)
            
             # DiffAug 적용
             real_images_aug = apply_diffaug(real_images, policy=diffaug_policy)
@@ -476,21 +544,18 @@ def train_stylegan2(
            
             # Discriminator 학습
             d_optimizer.zero_grad()
-           
-            d_real, real_class_pred = discriminator(real_images_aug, real_labels)
-            d_fake, fake_class_pred = discriminator(fake_images_aug.detach(), real_labels)
+
+            d_real, dr_q_loss = discriminator(real_images_aug, real_labels)
+            d_fake, df_q_loss = discriminator(fake_images_aug.detach(), real_labels)
            
             # WGAN-GP Loss
             gp = gradient_penalty(discriminator, real_images_aug, fake_images_aug.detach(), device, real_labels)
-            wasserstein_loss = -(torch.mean(d_real) - torch.mean(d_fake))
-           
-            # Classification Loss (CrossEntropy)
-            classification_loss = F.cross_entropy(real_class_pred, real_labels)
-           
-            # Training loop 안에서
-            # d_loss = wasserstein_loss + 2.0 * gp + classification_loss + r1_reg
-            d_loss = wasserstein_loss + 10.0 * gp + classification_loss
-            d_loss.backward(retain_graph=True)
+
+            hinge_loss = (F.relu(1 + d_real) + F.relu(1 - d_fake)).mean()
+            quantize_loss = (df_q_loss + dr_q_loss).mean()
+
+            d_loss = hinge_loss + quantize_loss + 10.0 * gp
+            d_loss.backward()
             
             # Gradient Clipping 적용
             torch.nn.utils.clip_grad_norm_(discriminator.parameters(), 1)
@@ -500,10 +565,17 @@ def train_stylegan2(
             if i % 5 == 0:
                 g_optimizer.zero_grad()
                 d_fake, fake_class_pred = discriminator(fake_images_aug, real_labels)
-                g_wasserstein_loss = -torch.mean(d_fake)
-                g_classification_loss = F.cross_entropy(fake_class_pred, real_labels)
-                g_loss = g_wasserstein_loss + g_classification_loss
-                g_loss.backward(retain_graph=True)
+                g_loss = d_fake.mean()
+                if (epoch >= 100) and (i % 30 == 0):
+                    pl_lengths = calc_pl_lengths(w_styles, fake_images)
+                    avg_pl_length = np.mean(pl_lengths.detach().cpu().numpy())
+
+                    if pl_mean:
+                        pl_loss = ((pl_lengths - pl_mean) ** 2).mean()
+                        if not torch.isnan(pl_loss):
+                            g_loss = g_loss + pl_loss
+                    pl_mean = pl_mean * 0.99 + avg_pl_length * 0.01
+                g_loss.backward()
                 torch.nn.utils.clip_grad_norm_(generator.parameters(), 1)
                 g_optimizer.step()
                 epoch_g_losses.append(g_loss.item()) 
@@ -523,12 +595,14 @@ def train_stylegan2(
                 
                 print(f'Epoch [{epoch}/{n_epochs}] Step [{i}/{len(train_dataloader)}] '
                       f'd_loss: {d_loss.item():.4f} g_loss: {g_loss.item():.4f}')
-        
+                
+        save_generated_images(generator, style_vectorizer, epoch+1, samples_dir, SUPERCLASS_NAMES, intra_fids_list, device=device)
         # eval_freq 에포크마다 평가 수행
         if (epoch + 1) % eval_freq == 0:
             print(f"\nEvaluating epoch {epoch+1}...")
             eval_metrics = evaluate_epoch(
                 generator=generator,
+                style_vectorizer=style_vectorizer,
                 real_dataloader=eval_dataloader,
                 n_eval_samples=n_eval_samples,
                 batch_size=eval_batch_size,
@@ -540,7 +614,7 @@ def train_stylegan2(
             eval_metrics['g_loss'] = np.mean(epoch_g_losses)
 
             # 평가 시에만 이미지 생성
-            save_generated_images(generator, epoch+1, samples_dir, SUPERCLASS_NAMES, intra_fids_list, device=device)
+            # save_generated_images(generator, epoch+1, samples_dir, SUPERCLASS_NAMES, intra_fids_list, device=device)
         
             # 메트릭 로깅
             metrics_logger.update(epoch, eval_metrics)
