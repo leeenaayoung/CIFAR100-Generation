@@ -37,6 +37,10 @@ But you should be careful your CUDA Version is same with ours.
 * Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
 * DiffAug(color,translation)
 
+# Regularization
+* Discriminator: hinge loss + gradient penalty
+* Generator: hinge loss + Path Length Regularization
+
 ## Training
 ```bash
 python main_train.py
