@@ -10,7 +10,7 @@ import math
 from torch.autograd import grad as torch_grad
 
 import matplotlib.pyplot as plt
-import wandb
+# import wandb
 import torch.nn.functional as F
 from PIL import Image, ImageDraw, ImageFont
 import torchvision.transforms as transforms
@@ -238,10 +238,10 @@ class MetricsLogger:
                 plt.savefig(save_path)
                 
                 # wandb에 로깅
-                log_dict["plots/superclass_intra_fid"] = wandb.Image(fig)
+                # log_dict["plots/superclass_intra_fid"] = wandb.Image(fig)
                 plt.close()
         
-        wandb.log(log_dict)
+        # wandb.log(log_dict)
         
         # JSON으로 저장하기 전에 모든 값이 직렬화 가능한지 확인
         with open(os.path.join(self.log_dir, 'metrics.json'), 'w') as f:
@@ -389,10 +389,10 @@ def save_generated_images(generator, style_vectorizer,epoch, save_dir, superclas
     # 이미지 저장
     save_path = os.path.join(save_dir, f'samples_epoch_{epoch}.png')
     canvas.save(save_path)
-    wandb.log({
-        "Generated Samples": wandb.Image(canvas),
-        "epoch": epoch
-    })
+    # wandb.log({
+    #     "Generated Samples": wandb.Image(canvas),
+    #     "epoch": epoch
+    # })
 
     print(f"Saved generated images to {save_path}")
     
@@ -465,9 +465,9 @@ def train_stylegan2(
     discriminator = StyleGAN2Discriminator().to(device)
     style_vectorizer = StyleVectorizer().to(device)
     
-    # wandb에 모델 구조 기록
-    wandb.watch(generator, log="all", log_freq=log_freq)
-    wandb.watch(discriminator, log="all", log_freq=log_freq)
+    # # wandb에 모델 구조 기록
+    # wandb.watch(generator, log="all", log_freq=log_freq)
+    # wandb.watch(discriminator, log="all", log_freq=log_freq)
     
     # 옵티마이저 설정
     g_optimizer = optim.Adam(generator.parameters(), lr=0.00025, betas=(0, 0.99))
@@ -495,8 +495,8 @@ def train_stylegan2(
         start_epoch = checkpoint['epoch'] + 1
         print(f"Resuming from epoch {start_epoch}")
         
-        # wandb에 체크포인트 복구 기록
-        wandb.log({"resume_from_epoch": start_epoch})
+        # # wandb에 체크포인트 복구 기록
+        # wandb.log({"resume_from_epoch": start_epoch})
     
     # 데이터로더 설정
     train_dataloader = get_dataloader(batch_size=batch_size, num_workers=num_workers)
@@ -512,8 +512,8 @@ def train_stylegan2(
         epoch_g_losses = []
         epoch_d_losses = []
         
-        # epoch 진행률을 wandb에 기록
-        wandb.log({"epoch": epoch, "progress": epoch/n_epochs})
+        # # epoch 진행률을 wandb에 기록
+        # wandb.log({"epoch": epoch, "progress": epoch/n_epochs})
         
         # Training loop 수정
         for i, (real_images, real_labels) in enumerate(train_dataloader):
@@ -588,7 +588,7 @@ def train_stylegan2(
                     'epoch': epoch,
                     'step': i
                 }
-                wandb.log(step_metrics)
+                # wandb.log(step_metrics)
                 
                 print(f'Epoch [{epoch}/{n_epochs}] Step [{i}/{len(train_dataloader)}] '
                       f'd_loss: {d_loss.item():.4f} g_loss: {g_loss.item():.4f}')

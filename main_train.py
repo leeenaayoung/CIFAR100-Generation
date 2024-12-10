@@ -2,7 +2,7 @@ import argparse
 import torch
 import os
 from datetime import datetime
-import wandb
+# import wandb
 from stylegan2_model import StyleGAN2Generator, StyleGAN2Discriminator
 from train import train_stylegan2
 import numpy as np
@@ -72,21 +72,22 @@ def main():
     args = parse_args()
     
     # wandb 초기화
-    run_name = args.wandb_name if args.wandb_name else f"stylegan2-cifar100-{datetime.now().strftime('%Y%m%d_%H%M%S')}"
-    wandb.init(
-        project=args.wandb_project,
-        entity=args.wandb_entity,
-        name=run_name,
-        config=vars(args)
-    )
+    # run_name = args.wandb_name if args.wandb_name else f"stylegan2-cifar100-{datetime.now().strftime('%Y%m%d_%H%M%S')}"
+    # wandb.init(
+    #     project=args.wandb_project,
+    #     entity=args.wandb_entity,
+    #     name=run_name,
+    #     config=vars(args)
+    # )
     
     # Device 설정
     device = torch.device(args.device if torch.cuda.is_available() else 'cpu')
     print(f"Using device: {device}")
     
     # 체크포인트 디렉토리 생성
-    experiment_name = wandb.run.name
-    checkpoint_path = os.path.join(args.checkpoint_dir, experiment_name)
+    # experiment_name = wandb.run.name
+    # checkpoint_path = os.path.join(args.checkpoint_dir, experiment_name)
+    checkpoint_path = os.path.join(args.checkpoint_dir, "cgv")
     os.makedirs(checkpoint_path, exist_ok=True)
     
     # 훈련 설정 저장
@@ -123,8 +124,8 @@ def main():
     }, final_checkpoint)
     print(f"Final model saved to {final_checkpoint}")
     
-    # wandb 종료
-    wandb.finish()
+    # # wandb 종료
+    # wandb.finish()
 
 if __name__ == '__main__':
     main()
