@@ -296,8 +296,6 @@ def save_generated_images(generator, style_vectorizer,epoch, save_dir, superclas
 
         # Generate fake images
         w_styles = style_vectorizer(z)
-        # w_styles = truncate_style(w_styles, trunc_psi=0.75)
-        # print(f"styles shape: {styles.shape}")  # (batch_size, total_layers, latent_dim)
         spatial_noise = image_noise(batch_size, 32, device)  # Spatial noise
         fake_labels = []
 
@@ -420,8 +418,6 @@ def evaluate_epoch(generator, style_vectorizer, real_dataloader, n_eval_samples=
 
         # Generate fake images
         w_styles = style_vectorizer(z)
-        # w_styles = truncate_style(w_styles, trunc_psi=0.75)
-        # print(f"styles shape: {styles.shape}")  # (batch_size, total_layers, latent_dim)
         spatial_noise = image_noise(batch_size, 32, device)  # Spatial noise
         
         # 메모리 절약을 위해 gradient 계산 비활성화
@@ -461,6 +457,7 @@ def train_stylegan2(
     eval_batch_size=32,
     diffaug_policy="translation,cutout"  # DiffAug 정책 추가
 ):
+    best_metrics = [0,0,0,100]
     """StyleGAN2 훈련 함수"""
     global intra_fids_list 
     # 모델 초기화
@@ -612,9 +609,6 @@ def train_stylegan2(
             # 손실값 추가
             eval_metrics['d_loss'] = np.mean(epoch_d_losses)
             eval_metrics['g_loss'] = np.mean(epoch_g_losses)
-
-            # 평가 시에만 이미지 생성
-            # save_generated_images(generator, epoch+1, samples_dir, SUPERCLASS_NAMES, intra_fids_list, device=device)
         
             # 메트릭 로깅
             metrics_logger.update(epoch, eval_metrics)
@@ -632,6 +626,9 @@ def train_stylegan2(
                 'g_loss': np.mean(epoch_g_losses)
             })
         
+        if (best_metrics[3] > eval_metrics['intra_fid']['mean']):
+            best_metrics = [eval_metrics['inception_score']['mean'], eval_metrics['inception_score']['std'], eval_metrics['fid'], eval_metrics['intra_fid']['mean']]
+
         # 체크포인트 저장
         if (epoch + 1) % checkpoint_freq == 0:
             checkpoint_file = os.path.join(checkpoint_dir, f'checkpoint_epoch_{epoch+1}.pt')
@@ -643,7 +640,11 @@ def train_stylegan2(
                 'epoch': epoch,
                 'metrics': eval_metrics if (epoch + 1) % eval_freq == 0 else None
             }
-            # torch.save(checkpoint_data, checkpoint_file)
+            # torch.save(checkpoint_data, checkpoint_file) # If you want to save model, use this
             print(f"Saved checkpoint to {checkpoint_file}")
     
+    print("Best_Metrics")
+    print(f'IS: {best_metrics[0]}±{best_metrics[1]}')
+    print(f'FID: {best_metrics[2]}')
+    print(f'Intra-FID: {best_metrics[3]}')
     return generator, discriminator
