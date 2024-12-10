@@ -79,7 +79,7 @@ This architecture was specifically designed to handle the unique characteristics
 | FID | 20.88 |
 | Intra-FID | 56.83 |
 | Runtime | 2d 2h 59m 28s |
-
+| seed | 0 |
 
 ## Git Commit Rules
 | Tag Name           | Description                                               |
