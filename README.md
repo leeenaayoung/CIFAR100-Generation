@@ -79,7 +79,7 @@ This architecture was specifically designed to handle the unique characteristics
 | Metrics | Score |
 |---------|-------|
 | IS | 6.51±0.11 |
-| FID | 20.88 |
+| FID | 20.89 |
 | Intra-FID | 56.83 |
 | Runtime | 2d 2h 59m 28s |
 | seed | 0 |
