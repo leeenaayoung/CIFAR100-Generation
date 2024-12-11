@@ -40,9 +40,12 @@ But you should be careful your CUDA Version is same with ours.
 * Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
 * DiffAug(color,translation)
 
-# Regularization
+## Regularization
 * Discriminator: hinge loss + quantize_loss + gradient penalty
 * Generator: hinge loss + Path Length Regularization
+
+## How to change seed
+* You can change seed by set the num of function set_seed(num) in main_train.py, train.py, evaluate.py
 
 ## Training
 ```bash
