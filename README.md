@@ -2,7 +2,7 @@
 ## Image Generation with CIFAR100
 We present a deep learning challenge focused on image generation using the CIFAR100 dataset. This CIFAR100 Generation challenge targets conditional generation on superclasses (20 classes for CIFAR100), aiming to create high-fidelity images while maintaining class-specific features.
 
-## Envirionment
+## Environment
 * Python 3.11.4
 * Pytorch 2.1.2+cu121
 * wandb 0.18.5(optional)
@@ -26,15 +26,35 @@ But you should be careful your CUDA Version is same with ours.
 
 ## Table of Usage
 - [Data Preprocessing and Augmentation](#Data-preprocessing-and-augmenataion)
+- [Regularization](#Regularization)
+- [Training](#Training)
 - [Run wandb(optional)](#Run-wandb-optional)
+- [How to check best metrics](#How-to-check-best-metrics)
 - [Model Structure](#Model-structure)
 - [Results](#Results)
 
-## Data Preprocessing ang Augmentation
+## Data Preprocessing and Augmentation
 * Resize(32)
 * ToTensor()
 * RandomHorizontalFlip()
 * Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
+* DiffAug(color,translation)
+
+## Regularization
+* Discriminator: hinge loss + quantize_loss + gradient penalty
+* Generator: hinge loss + Path Length Regularization
+
+## How to change seed
+* You can change seed by set the num of function set_seed(num) in main_train.py, train.py, evaluate.py
+
+## Training
+```bash
+python main_train.py
+```
+OR
+```bash
+python3 main_train.py
+```
 
 ## Run wandb(optional)
 Install wandb
@@ -43,12 +63,16 @@ pip install wandb
 ```
 ```python
 import wandb
-wandb.init(project="CIFAR-100_Classification", entity=args.wandb_entity, name=run_name, config=vars(args)
+wandb.init(project="CIFAR-100_Generation", entity=args.wandb_entity, name=run_name, config=vars(args)
 ```
 If you want to use wandb, remove wandb annotation
 
+## How to check best metrics
+You can see the metric at the midpoint every 100 epochs and at the end of the 1000 epoch training, you can see the best metric. For the best metric, it is evaluated based on the lowest Intra-Fid. If you want to save the model, uncomment save model at the end of train.py.
+
 ## Model Structure
 ![제목 없는 프레젠테이션](https://github.com/user-attachments/assets/4e561b07-e6e8-410f-8479-83d17b2edfeb)
+
 The model we implemented for this project is StyleGAN2, an enhanced version of StyleGAN, which consists of three key components: mapping network, synthesis network, and style injection mechanism. The diagram above illustrates the architecture of our implemented model.
 The mapping network, located on the left, transforms a latent vector z into an intermediate latent vector w. This network comprises an L2 normalization layer and 8 fully connected layers, each activated with Leaky ReLU. We incorporated label embedding to enable the model to reflect class information effectively.
 The synthesis network, positioned in the center, serves as the core network for image generation. Starting with a 4x4 resolution, it progressively increases the image size through generator blocks, each incorporating upsampling, convolution, noise addition, and style injection processes. We implemented Conv2dModulation and ToRGB layers to effectively capture fine details and gradually generate color information, even with CIFAR100's small image dimensions.
@@ -61,11 +85,11 @@ This architecture was specifically designed to handle the unique characteristics
 
 | Metrics | Score |
 |---------|-------|
-| IS | 6.51±0.11 |
-| FID | 20.88 |
-| Intra-FID | 56.83 |
-| Runtime | 2d 3h 7m 32s |
-
+| IS | 6.57±0.07 |
+| FID | 19.89 |
+| Intra-FID | 55.57 |
+| Runtime | 2d 2h 59m 28s |
+| seed | 0 |
 
 ## Git Commit Rules
 | Tag Name           | Description                                               |
