@@ -619,15 +619,14 @@ def train_stylegan2(
             print(f"Intra-FID Score: {eval_metrics['intra_fid']['mean']:.2f}")
             print(f"Average D Loss: {np.mean(epoch_d_losses):.4f}")
             print(f"Average G Loss: {np.mean(epoch_g_losses):.4f}\n")
+            if (best_metrics[3] > eval_metrics['intra_fid']['mean']):
+                best_metrics = [eval_metrics['inception_score']['mean'], eval_metrics['inception_score']['std'], eval_metrics['fid'], eval_metrics['intra_fid']['mean']]
         else:
             # 평가를 건너뛸 때는 손실값만 기록
             metrics_logger.update(epoch, {
                 'd_loss': np.mean(epoch_d_losses),
                 'g_loss': np.mean(epoch_g_losses)
             })
-        
-        if (best_metrics[3] > eval_metrics['intra_fid']['mean']):
-            best_metrics = [eval_metrics['inception_score']['mean'], eval_metrics['inception_score']['std'], eval_metrics['fid'], eval_metrics['intra_fid']['mean']]
 
         # 체크포인트 저장
         if (epoch + 1) % checkpoint_freq == 0:
