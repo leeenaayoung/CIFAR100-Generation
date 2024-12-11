@@ -1,6 +1,6 @@
 # **CIFAR100-Generation**
 ## Image Generation with CIFAR100
-We present a deep learning challenge focused on image generation using the CIFAR100 dataset. This CIFAR100 Generation challenge targets conditional generation on superclasses (20 classes for CIFAR100), aiming to create high-fidelity images while maintaining class-specific features.
+We present a challenge focused on image generation using the CIFAR100 dataset. This CIFAR100 Generation challenge targets conditional generation on superclasses (20 classes for CIFAR100), aiming to create high-fidelity images while maintaining class-specific features.
 
 ## Environment
 * Python 3.11.4
